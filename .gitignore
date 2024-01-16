@@ -1,6 +1,6 @@
 .DS_Store
-node_modules
-venv
+jobtrackr_frontend/node_modules
+venv/
 /dist
 
 
