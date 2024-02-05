@@ -1,19 +1,23 @@
 from django.db import models
+from django.forms import JSONField
+
 
 class Company(models.Model):
     name = models.CharField(max_length=100)
 
     def __str__(self):
-        return self.name
+        return f"{self.name}"
+
 
 class Job(models.Model):
     title = models.CharField(max_length=100)
-    description = models.CharField(max_length=10000)
+    description = models.CharField(max_length=100000)
     location = models.CharField(max_length=100, default='London')
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
 
     def __str__(self):
-        return self.title
+        return f"{self.title}"
+
 
 class Application(models.Model):
     STATUS_CHOICES = [
@@ -33,3 +37,31 @@ class Application(models.Model):
 
     def __str__(self):
         return f"{self.job.title} - {self.status}"
+
+
+class Report(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    job_title = models.CharField(max_length=255)
+    location = models.CharField(max_length=255)
+    logo = models.URLField()
+    description = models.TextField()
+    min_salary = models.DecimalField(max_digits=10, decimal_places=2)
+    max_salary = models.DecimalField(max_digits=10, decimal_places=2)
+    median_salary = models.DecimalField(max_digits=10, decimal_places=2)
+    salary_currency = models.CharField(max_length=10)
+    sector = models.CharField(max_length=255)
+    projects = models.TextField()
+    website_url = models.URLField(max_length=1024)
+
+    def __str__(self):
+        return f"{self.company_name} - {self.job_title}"
+
+
+class NewsItem(models.Model):
+    report = models.ForeignKey('Report', related_name='news_items', on_delete=models.CASCADE)
+    title = models.CharField(max_length=255)
+    snippet = models.TextField()
+    url = models.URLField()
+
+    def __str__(self):
+        return f"{self.title}"

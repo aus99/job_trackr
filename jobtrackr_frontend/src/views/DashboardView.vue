@@ -2,7 +2,6 @@
 
 <template>
   <div class="flex">
-    <SideBar />
     <div class="bg-white text-black dark:text-white w-full min-h-screen">
             <div class="flex justify-between py-10 w-full">
                <div class="px-16">
@@ -209,13 +208,9 @@
 </template>
 
 <script>
-  import SideBar from "@/components/SideBar.vue";
   import axiosClient from "@/views/axiosClient";
 
   export default {
-    components: {
-      SideBar,
-    },
     data() {
       return {
         toggleModal: false,
@@ -299,11 +294,5 @@
 </script>
 
 <style src="../index.css">
-  .slide-fade-enter-active, .slide-fade-leave-active {
-  transition: all .3s ease;
-}
-.slide-fade-enter, .slide-fade-leave-to {
-  transform: translateY(10px);
-  opacity: 0;
-}
+
 </style>

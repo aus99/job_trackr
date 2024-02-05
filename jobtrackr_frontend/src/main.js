@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
-import DashboardView from './views/DashboardView.vue'
-import router from "@/router";
+import router from "./router";
+import App from "./App.vue";
 import axios from "axios";
+import './index.css'
 
-createApp(DashboardView).use(router, axios).mount('#app')
+createApp(App).use(router, axios).mount('#app')

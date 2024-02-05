@@ -22,7 +22,7 @@ def view_application_list(request):
                    'company_name': application.job.company.name,
                    'status': application.status,
                    'location': application.job.location,
-                   'description':application.job.description,
+                   'description': application.job.description,
                    }
         application_array.append(context)
 
