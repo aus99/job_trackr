@@ -63,9 +63,60 @@
       </ul>
             </div>
           </div>
+          <div class="text-left">
+            <div class="mt-3 text-base font-semibold">Top Reviews</div>
+
+<figure v-for="review in report.top_reviews" :key="review.author_name" class="max-w-screen-md my-2">
+    <blockquote>
+        <p class="text-base font-semibold text-gray-900 dark:text-white">"{{review.text}}"</p>
+    </blockquote>
+    <figcaption class="flex items-center mt-3 space-x-3 rtl:space-x-reverse">
+        <div class="flex items-center divide-x-2 rtl:divide-x-reverse divide-gray-300 dark:divide-gray-700">
+            <cite class="pe-3 font-medium text-gray-700 dark:text-white">{{ review.author_name }}</cite>
+        </div>
+    </figcaption>
+  <div class="flex items-center my-4 text-yellow-300">
+    <div v-for="star in 5" :key="star" class="w-5 h-5 me-1">
+      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 22 20">
+            <path v-if="star <= review.rating" d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z"/>
+            <path v-else d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" class="text-gray-300"/>
+        </svg>
+    </div>
+  </div>
+</figure>
+
+          </div>
+          <div class="text-left">
+            <div class="mt-3 text-base font-semibold">Overall Ratings</div>
+
+
+<div class="flex items-center mb-2">
+    <div class="flex items-center my-4 text-yellow-300">
+    <div v-for="star in 5" :key="star" class="w-5 h-5 me-1">
+      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 22 20">
+            <path v-if="star <= report.overall_rating" d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z"/>
+            <path v-else d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" class="text-gray-300"/>
+        </svg>
+    </div>
+    <p class="ms-1 text-sm font-medium text-gray-500 dark:text-gray-400">{{ report.overall_rating }}</p>
+    <p class="ms-1 text-sm font-medium text-gray-500 dark:text-gray-400">out of</p>
+    <p class="ms-1 text-sm font-medium text-gray-500 dark:text-gray-400">5</p>
+  </div>
+  </div>
+<p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ report.total_reviews }} reviews</p>
+<div v-for="star in [5, 4, 3, 2, 1]" :key="star" class="flex items-center mt-4">
+    <a href="#" class="text-sm font-medium text-blue-600 dark:text-blue-500 hover:underline">{{ star }} star</a>
+    <div class="w-2/4 h-5 mx-4 bg-gray-200 rounded dark:bg-gray-700">
+        <div class="h-5 bg-yellow-300 rounded" :style="{ width: ratingDistribution[star] + '%' }"></div>
+    </div>
+    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ calculateDistribution(report.overall_rating)[star] }}%</span>
+</div>
+
+
         </div>
       </div>
     </div>
+  </div>
   </div>
 </template>
 
@@ -87,6 +138,9 @@ export default {
       return this.report.website_url;
     }
     return `https://${this.report.website_url}`;
+  },
+    ratingDistribution() {
+    return this.calculateDistribution(this.report.overall_rating);
   }
 },
   methods: {
@@ -99,6 +153,38 @@ export default {
               console.error('There was an error fetching the report:', error.response.data);
             });
     },
+    calculateDistribution(averageRating) {
+    const distribution = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+    const totalPercentage = 100;
+    const distributionStep = totalPercentage / (Object.keys(distribution).length - 1);
+
+    for (let rating = 1; rating <= 5; rating++) {
+      const distanceFromAvg = Math.abs(averageRating - rating);
+      distribution[rating] = Math.max(0, totalPercentage - (distanceFromAvg * distributionStep));
+    }
+
+    let sumDistribution = Object.values(distribution).reduce((a, b) => a + b, 0);
+    for (let rating in distribution) {
+
+      distribution[rating] = Math.ceil((distribution[rating] / sumDistribution) * 100);
+    }
+
+
+    sumDistribution = Object.values(distribution).reduce((a, b) => a + b, 0);
+    if (sumDistribution > 100) {
+
+      const ratingsDescending = Object.keys(distribution).sort((a, b) => distribution[b] - distribution[a]);
+      for (let rating of ratingsDescending) {
+        const excess = sumDistribution - 100;
+        if (excess > 0 && distribution[rating] > 0) {
+          distribution[rating] -= excess;
+          break;
+        }
+      }
+    }
+
+    return distribution;
+  },
   }
 }
 </script>

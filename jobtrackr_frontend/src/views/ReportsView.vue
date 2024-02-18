@@ -125,7 +125,7 @@ export default {
           company_name: this.company_name,
           location: this.location,
         })
-      .then((response) => {
+          .then((response) => {
             console.log(response.data);
             this.getReports();
           })

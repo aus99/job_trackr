@@ -49,9 +49,13 @@ class Report(models.Model):
     max_salary = models.DecimalField(max_digits=10, decimal_places=2)
     median_salary = models.DecimalField(max_digits=10, decimal_places=2)
     salary_currency = models.CharField(max_length=10)
-    sector = models.CharField(max_length=255)
+    sector = models.CharField(max_length=255, null=True, blank=True)
     projects = models.TextField()
     website_url = models.URLField(max_length=1024)
+    total_reviews = models.IntegerField(default=0, null=True, blank=True)
+    overall_rating = models.FloatField(default=0.0, null=True, blank=True)
+    rating_distribution = models.JSONField(default=dict, null=True, blank=True)
+    top_reviews = models.JSONField(default=list, null=True, blank=True)
 
     def __str__(self):
         return f"{self.company_name} - {self.job_title}"

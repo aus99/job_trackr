@@ -1,5 +1,7 @@
 import json
 
+import os
+from openai import OpenAI
 import requests
 from django.db import transaction
 from django.shortcuts import get_object_or_404
@@ -10,6 +12,12 @@ from django.http import JsonResponse
 from dashboard.models import Report, Company, NewsItem
 
 RAPIDAPI_KEY = "0a886d1acfmshf7f6f25447d1423p1b3abejsn0ecf3486e01a"
+OPENAI_API_KEY = "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"
+GOOGLE_API_KEY = "AIzaSyB7_m3xeyd8t1L5PoFtugu596oFl0xModk"
+model = "gpt-3.5-turbo"
+client = OpenAI(
+    api_key=OPENAI_API_KEY
+)
 
 
 def get_reports(request):
@@ -43,6 +51,10 @@ def view_report(request, report_id):
         context['sector'] = report.sector
         context['projects'] = report.projects
         context['website_url'] = report.website_url
+        context['total_reviews'] = report.total_reviews
+        context['overall_rating'] = report.overall_rating
+        context['rating_distribution'] = report.rating_distribution
+        context['top_reviews'] = report.top_reviews
         news_query_list = NewsItem.objects.filter(report=report)
         context['news_list'] = []
         for news in news_query_list:
@@ -55,7 +67,9 @@ def view_report(request, report_id):
     except Report.DoesNotExist:
         context['report_id'] = context['job_title'] = context['company_name'] = context['logo'] = \
             context['min_salary'] = context['max_salary'] = context['median_salary'] = context['salary_currency'] = \
-            context['revenue'] = context['sector'] = context['location'] = "Report does not exist"
+            context['sector'] = context['projects'] = context['website_url'] = context['total_reviews'] = \
+            context['overall_rating'] = context['rating_distribution'] = context['top_reviews'] = \
+            context['location'] = "Report does not exist"
     return JsonResponse(context)
 
 
@@ -68,27 +82,38 @@ def create_report(request):
         company_name = post_data['company_name']
         job_title = post_data['job_title']
         location = post_data['location']
+        description_prompt = f"Give me a comprehensive overview of the company {company_name}."
+        projects_prompt = f"Tell me about some big projects by the company {company_name} that are relevant to {job_title}."
 
         if not company_name or not job_title or not location:
             return JsonResponse({"error": "No company name, location or job title provided"}, status=400)
 
         # Fetch the description and projects from ChatGPT API
-        chatgpt_headers = {
-            "content-type": "application/json",
-            "X-RapidAPI-Key": RAPIDAPI_KEY,
-            "X-RapidAPI-Host": "chatgpt-openai1.p.rapidapi.com"
-        }
-        description_payload = {"query": f"Give me a comprehensive overview of the company {company_name}"}
-        projects_payload = {
-            "query": f"Tell me about some big projects by the company {company_name} that are relevant to {job_title}"}
+        try:
+            description_response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": description_prompt
+                    }
+                ],
+            )
 
-        description_response = requests.post("https://chatgpt-openai1.p.rapidapi.com/ask", json=description_payload,
-                                             headers=chatgpt_headers)
-        projects_response = requests.post("https://chatgpt-openai1.p.rapidapi.com/ask", json=projects_payload,
-                                          headers=chatgpt_headers)
+            project_response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": projects_prompt
+                    }
+                ],
+            )
+            description = description_response.choices[0].message.content.strip()
+            projects = project_response.choices[0].message.content.strip()
 
-        description = description_response.json()['response'] if description_response.status_code == 200 else ""
-        projects = projects_response.json()['response'] if projects_response.status_code == 200 else ""
+        except Exception as e:
+            return JsonResponse({"error": f"Failed to fetch data from OpenAI: {str(e)}"}, status=500)
 
         try:
             company_id = get_company_id(company_name)
@@ -96,13 +121,17 @@ def create_report(request):
             website_url = company_details.get('website', '')
             salary_details = get_salary_info(job_title, location)
             news_details = get_news_info(company_name)
+            ratings_reviews_data = get_company_ratings_and_reviews(company_name, location)
+            if not ratings_reviews_data:
+                return JsonResponse({"error": "Failed to fetch ratings and reviews data."}, status=500)
 
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data provided."}, status=400)
         except Exception as e:
-            print(f"Error fetching external API data: {str(e)}")
-            return JsonResponse({"error": "Failed to fetch data from external APIs"}, status=500)
+            return JsonResponse({"error": str(e)}, status=500)
 
-        if not company_details or not salary_details:
-            return JsonResponse({"error": "Required company or salary information is missing"}, status=500)
+        if not company_details or not salary_details or not ratings_reviews_data:
+            return JsonResponse({"error": "Required company, ratings or salary information is missing"}, status=500)
 
         company, created = Company.objects.get_or_create(name=company_name)
         report = Report.objects.create(
@@ -116,8 +145,12 @@ def create_report(request):
             max_salary=salary_details.get('max_salary'),
             median_salary=salary_details.get('median_salary'),
             salary_currency=salary_details.get('salary_currency'),
-            sector=company_details.get('sector'),
+            sector=company_details.get('sector', 'Unknown'),
             website_url=website_url,
+            total_reviews=ratings_reviews_data.get('total_reviews'),
+            overall_rating=ratings_reviews_data.get('overall_rating', 0.0),
+            rating_distribution=ratings_reviews_data.get('rating_distribution'),
+            top_reviews=ratings_reviews_data.get('top_reviews'),
         )
 
         for news in news_details[:3]:  # Limit to top 3 news items
@@ -129,7 +162,7 @@ def create_report(request):
             )
 
         return JsonResponse(
-            {'message': 'Report created successfully', 'id': report.id})  # Send back some identifier
+            {'message': 'Report created successfully', 'id': report.id})
     else:
         return JsonResponse({'error': 'Invalid request'}, status=400)
 
@@ -220,6 +253,68 @@ def get_news_info(company_name):
         } for news in top_news]
         return news_info
     return None
+
+
+def get_company_ratings_and_reviews(company_name, location):
+    if not company_name or not location:
+        return JsonResponse({"error": "Missing required parameters: company_name or location"}, status=400)
+
+    # Find the place ID for the company
+    search_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+    search_params = {
+        "query": f"{company_name} near {location}",
+        "key": GOOGLE_API_KEY,
+    }
+    search_resp = requests.get(search_url, params=search_params)
+    search_results = search_resp.json()
+
+    if search_resp.status_code != 200 or not search_results.get('results'):
+        return JsonResponse({"error": "Failed to fetch company ID or company not found"},
+                            status=search_resp.status_code)
+
+    place_id = search_results['results'][0].get('place_id')
+
+    # Use the place ID to get details
+    details_url = "https://maps.googleapis.com/maps/api/place/details/json"
+    details_params = {
+        "place_id": place_id,
+        "fields": "rating,reviews,user_ratings_total",
+        "key": GOOGLE_API_KEY,
+    }
+    details_resp = requests.get(details_url, params=details_params)
+    details = details_resp.json()
+
+    if details_resp.status_code != 200 or 'result' not in details:
+        return JsonResponse({"error": "Failed to fetch company details"}, status=details_resp.status_code)
+
+    company_details = details['result']
+    overall_rating = company_details.get("rating", "No rating available")
+    total_reviews = company_details.get("user_ratings_total", 0)
+    reviews = company_details.get("reviews", [])
+
+    # Calculate rating distribution from all reviews
+    rating_distribution = {'1': 0, '2': 0, '3': 0, '4': 0, '5': 0}
+    for review in reviews:
+        rating = str(int(review.get("rating", 0)))  # Ensure the rating is an integer then convert to string
+        if rating in rating_distribution:
+            rating_distribution[rating] += 1
+
+    # Extract top 3 reviews for detailed information
+    top_reviews = [{
+        "author_name": review.get("author_name"),
+        "rating": review.get("rating"),
+        "text": review.get("text"),
+        "time": review.get("time")
+    } for review in reviews][:3]
+
+    response_data = {
+        "overall_rating": overall_rating,
+        "total_reviews": total_reviews,
+        "top_reviews": top_reviews,
+        "rating_distribution": rating_distribution,
+    }
+
+    return response_data
 
 
 
