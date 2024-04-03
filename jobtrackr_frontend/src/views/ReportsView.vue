@@ -118,23 +118,21 @@ export default {
     this.getReports()
   },
   methods: {
-    createReport() {
+    async createReport() {
       this.isLoading = true;
-      axiosClient.post('/reports/create_report/', {
+      try {
+        const response = await axiosClient.post('/reports/create_report/', {
           job_title: this.job_title,
           company_name: this.company_name,
           location: this.location,
         })
-          .then((response) => {
-            console.log(response.data);
-            this.getReports();
-          })
-      .catch((error) => {
-         console.error('Error creating report:', error.response || error);
-      })
-      .finally(() => {
-      this.isLoading = false; // Stop the loading state
-      });
+        console.log(response.data)
+        this.isLoading = false;
+        this.getReports();
+      }
+      catch (error) {
+        console.error(error.response.data);
+      }
     },
     getReports() {
       axiosClient.get('/reports/get_reports/')

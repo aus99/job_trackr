@@ -69,3 +69,29 @@ class NewsItem(models.Model):
 
     def __str__(self):
         return f"{self.title}"
+
+
+class Interview(models.Model):
+    application = models.ForeignKey(Application, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    answered = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.application}, {self.created_at}"
+
+
+class InterviewQuestion(models.Model):
+    interview = models.ForeignKey(Interview, related_name='questions', on_delete=models.CASCADE)
+    question_text = models.TextField()
+
+    def __str__(self):
+        return self.question_text
+
+
+class InterviewAnswer(models.Model):
+    question = models.ForeignKey(InterviewQuestion, related_name='answer', on_delete=models.CASCADE)
+    answer_text = models.TextField()
+    feedback = models.TextField()
+
+    def __str__(self):
+        return self.answer_text
